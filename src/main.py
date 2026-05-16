@@ -1,40 +1,23 @@
 import asyncio
 import time
 import random
-import psycopg2
-# Updated folder paths for clean module initialization
-from pipeline import execute_safe_pipeline, TITLE_BLACKLIST, RESUME_PDF_PATH
-from outreach import automate_recruiter_outreach
+import sqlite3  # Native Python serverless database engine
+from src.pipeline import execute_safe_pipeline, TITLE_BLACKLIST, RESUME_PDF_PATH
+from src.outreach import automate_recruiter_outreach
 
-
-
-import os
-from dotenv import load_dotenv
-
-# Automatically look for and read the local hidden .env file
-load_dotenv()
-
-# Build the connection parameter matrix dynamically using the extracted environment strings
-DB_CONN_STRING = (
-    f"dbname={os.getenv('DB_NAME')} "
-    f"user={os.getenv('DB_USER')} "
-    f"password={os.getenv('DB_PASSWORD')} "
-    f"host={os.getenv('DB_HOST')} "
-    f"port={os.getenv('DB_PORT')}"
-)
-
-
+DB_FILE = "jobs.db"
 
 def get_next_scraped_jobs(limit=5):
-    """Fetches a batch of unapplied jobs from the PostgreSQL database."""
-    conn = psycopg2.connect(DB_CONN_STRING)
+    """Fetches a batch of unapplied jobs from the serverless SQLite database."""
+    conn = sqlite3.connect(DB_FILE)
     cur = conn.cursor()
+    # SQLite parameters use '?' instead of '%s'
     cur.execute("""
         SELECT id, job_title, job_url 
         FROM job_postings 
         WHERE status = 'Scraped' 
         ORDER BY created_at ASC 
-        LIMIT %s;
+        LIMIT ?;
     """, (limit,))
     jobs = cur.fetchall()
     cur.close()
@@ -43,9 +26,9 @@ def get_next_scraped_jobs(limit=5):
 
 def flag_skipped_job(job_id, reason):
     """Updates database status for filtered jobs."""
-    conn = psycopg2.connect(DB_CONN_STRING)
+    conn = sqlite3.connect(DB_FILE)
     cur = conn.cursor()
-    cur.execute("UPDATE job_postings SET status = %s WHERE id = %s;", (reason, job_id))
+    cur.execute("UPDATE job_postings SET status = ? WHERE id = ?;", (reason, job_id))
     conn.commit()
     cur.close()
     conn.close()
