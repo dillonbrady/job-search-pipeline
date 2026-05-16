@@ -2,8 +2,11 @@ import asyncio
 import time
 import random
 import psycopg2
-from pipeline import execute_safe_pipeline, TITLE_BLACKLIST, RESUME_PDF_PATH
-from outreach import automate_recruiter_outreach
+# Updated folder paths for clean module initialization
+from src.pipeline import execute_safe_pipeline, TITLE_BLACKLIST, RESUME_PDF_PATH
+from src.outreach import automate_recruiter_outreach
+
+
 
 import os
 from dotenv import load_dotenv
