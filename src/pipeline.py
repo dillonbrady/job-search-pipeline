@@ -1,26 +1,12 @@
 import asyncio
 import random
 import traceback
-import psycopg2
+import sqlite3  # Native Python serverless database engine
 from playwright.async_api import async_playwright
 from pypdf import PdfReader
 
-import os
-from dotenv import load_dotenv
-
-# Automatically look for and read the local hidden .env file
-load_dotenv()
-
-# Build the connection parameter matrix dynamically using the extracted environment strings
-DB_CONN_STRING = (
-    f"dbname={os.getenv('DB_NAME')} "
-    f"user={os.getenv('DB_USER')} "
-    f"password={os.getenv('DB_PASSWORD')} "
-    f"host={os.getenv('DB_HOST')} "
-    f"port={os.getenv('DB_PORT')}"
-)
-
-
+# --- SYSTEM CONFIGURATION ---
+DB_FILE = "jobs.db"
 RESUME_PDF_PATH = "my_resume.pdf"
 
 # Senior-level candidate profile map (10+ Years Exp / $125k Target)
@@ -37,7 +23,7 @@ MY_PROFILE_DATA = {
     "compensation": "125000"   
 }
 
-# Optimized blacklist: removed 'senior' so you can target high-paying matching roles
+# Optimized blacklist: tracks operational parameters
 TITLE_BLACKLIST = ["manager", "director", "head", "principal"]
 
 def extract_text_from_pdf(pdf_path: str) -> str:
@@ -80,7 +66,8 @@ async def answer_screener_questions_deterministic(page):
                 await select_field.select_option(label="No")
 
 async def execute_safe_pipeline(job_id, job_url, pdf_path):
-    conn = psycopg2.connect(DB_CONN_STRING)
+    # Establish a clean SQLite connection instead of PostgreSQL
+    conn = sqlite3.connect(DB_FILE)
     cur = conn.cursor()
     
     async with async_playwright() as p:
@@ -94,7 +81,7 @@ async def execute_safe_pipeline(job_id, job_url, pdf_path):
             
             if await apply_btn.count() == 0:
                 print(f"[-] Easy Apply button not present for: {job_url}")
-                cur.execute("UPDATE job_postings SET status = 'Skipped' WHERE id = %s;", (job_id,))
+                cur.execute("UPDATE job_postings SET status = 'Skipped' WHERE id = ?;", (job_id,))
                 return
                 
             await apply_btn.click()
@@ -118,7 +105,7 @@ async def execute_safe_pipeline(job_id, job_url, pdf_path):
                     await review_btn.click()
                 elif await submit_btn.count() > 0 and await submit_btn.is_visible():
                     print(f"[!] Staged application for {job_url}. Review manually.")
-                    cur.execute("UPDATE job_postings SET status = 'Staged' WHERE id = %s;", (job_id,))
+                    cur.execute("UPDATE job_postings SET status = 'Staged' WHERE id = ?;", (job_id,))
                     await asyncio.sleep(60)
                     break
                 else:
@@ -132,10 +119,10 @@ async def execute_safe_pipeline(job_id, job_url, pdf_path):
             except:
                 dom_snapshot = "Failed to capture DOM."
             
-            cur.execute("UPDATE job_postings SET status = 'Failed' WHERE id = %s;", (job_id,))
+            cur.execute("UPDATE job_postings SET status = 'Failed' WHERE id = ?;", (job_id,))
             cur.execute("""
                 INSERT INTO automation_errors (job_posting_id, error_step, error_message, dom_snapshot) 
-                VALUES (%s, %s, %s, %s);
+                VALUES (?, ?, ?, ?);
             """, (job_id, current_step, error_msg, dom_snapshot))
         finally:
             conn.commit()
