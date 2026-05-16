@@ -1,0 +1,14 @@
+# Ignore compiled Python execution files
+__pycache__/
+*.pyc
+
+# Ignore local Playwright browser data (holds your live LinkedIn login cookies)
+/tmp/linkedin_profile/
+/tmp/playwright_user_data/
+
+# Security Shield: Protect private contact info from leaking to the public
+*.pdf
+pipeline_execution.log
+
+# Ignore local database variables and local credential configurations
+.env
