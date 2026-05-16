@@ -5,8 +5,22 @@ import psycopg2
 from playwright.async_api import async_playwright
 from pypdf import PdfReader
 
-# --- SYSTEM CONFIGURATION ---
-DB_CONN_STRING = "dbname=job_pipeline user=postgres password=secret host=localhost port=5432"
+import os
+from dotenv import load_dotenv
+
+# Automatically look for and read the local hidden .env file
+load_dotenv()
+
+# Build the connection parameter matrix dynamically using the extracted environment strings
+DB_CONN_STRING = (
+    f"dbname={os.getenv('DB_NAME')} "
+    f"user={os.getenv('DB_USER')} "
+    f"password={os.getenv('DB_PASSWORD')} "
+    f"host={os.getenv('DB_HOST')} "
+    f"port={os.getenv('DB_PORT')}"
+)
+
+
 RESUME_PDF_PATH = "my_resume.pdf"
 
 # Senior-level candidate profile map (10+ Years Exp / $125k Target)
