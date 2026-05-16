@@ -5,7 +5,22 @@ import psycopg2
 from pipeline import execute_safe_pipeline, TITLE_BLACKLIST, RESUME_PDF_PATH
 from outreach import automate_recruiter_outreach
 
-DB_CONN_STRING = "dbname=job_pipeline user=postgres password=secret host=localhost port=5432"
+import os
+from dotenv import load_dotenv
+
+# Automatically look for and read the local hidden .env file
+load_dotenv()
+
+# Build the connection parameter matrix dynamically using the extracted environment strings
+DB_CONN_STRING = (
+    f"dbname={os.getenv('DB_NAME')} "
+    f"user={os.getenv('DB_USER')} "
+    f"password={os.getenv('DB_PASSWORD')} "
+    f"host={os.getenv('DB_HOST')} "
+    f"port={os.getenv('DB_PORT')}"
+)
+
+
 
 def get_next_scraped_jobs(limit=5):
     """Fetches a batch of unapplied jobs from the PostgreSQL database."""
